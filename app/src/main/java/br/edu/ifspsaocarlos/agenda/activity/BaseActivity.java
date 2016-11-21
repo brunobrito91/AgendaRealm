@@ -1,5 +1,6 @@
 package br.edu.ifspsaocarlos.agenda.activity;
 
+import android.app.Application;
 import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
@@ -20,28 +21,30 @@ import br.edu.ifspsaocarlos.agenda.adapter.ContatoAdapter;
 import br.edu.ifspsaocarlos.agenda.data.ContatoDAO;
 import br.edu.ifspsaocarlos.agenda.model.Contato;
 import br.edu.ifspsaocarlos.agenda.R;
+import br.edu.ifspsaocarlos.agenda.util.PrimaryKeyFactory;
+import io.realm.Realm;
+import io.realm.RealmResults;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class BaseActivity extends AppCompatActivity {
 
-    protected ContatoDAO cDAO ;
+    protected ContatoDAO cDAO;
     private RecyclerView recyclerView;
 
-    protected List<Contato> contatos = new ArrayList<Contato>();
+    protected RealmResults<Contato> contatos;
     private SearchView searchView;
 
     private ContatoAdapter adapter;
 
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Realm.init(this);
         setContentView(R.layout.activity_main);
-
-        cDAO= new ContatoDAO(this);
+        PrimaryKeyFactory.getInstance().initialize(Realm.getDefaultInstance());
+        cDAO = new ContatoDAO();
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -81,18 +84,18 @@ public class BaseActivity extends AppCompatActivity {
                 showSnackBar("Contato inserido");
 
         if (requestCode == 2) {
-                if (resultCode == RESULT_OK)
-                    showSnackBar("Informações do contato alteradas");
-                if (resultCode == 3)
-                    showSnackBar("Contato removido");
+            if (resultCode == RESULT_OK)
+                showSnackBar("Informações do contato alteradas");
+            if (resultCode == 3)
+                showSnackBar("Contato removido");
 
-            }
+        }
 
         setupRecylerView(null);
     }
 
     public void showSnackBar(String msg) {
-        CoordinatorLayout coordinatorlayout=(CoordinatorLayout) findViewById(R.id.coordlayout);
+        CoordinatorLayout coordinatorlayout = (CoordinatorLayout) findViewById(R.id.coordlayout);
         Snackbar.make(coordinatorlayout, msg,
                 Snackbar.LENGTH_LONG)
                 .show();
@@ -103,20 +106,17 @@ public class BaseActivity extends AppCompatActivity {
 
         contatos = cDAO.buscaContato(nomeContato);
 
-        adapter = new ContatoAdapter(contatos, this);
-        recyclerView.setAdapter(adapter);
-
-
+        adapter = new ContatoAdapter(this, contatos, true);
         adapter.setClickListener(new ContatoAdapter.ItemClickListener() {
             @Override
             public void onItemClick(View view, int position) {
                 final Contato contato = contatos.get(position);
                 Intent i = new Intent(getApplicationContext(), DetalheActivity.class);
-                i.putExtra("contato", contato);
+                i.putExtra("contatoID", contato.getId());
                 startActivityForResult(i, 2);
             }
         });
-
+        recyclerView.setAdapter(adapter);
 
         ItemTouchHelper.SimpleCallback simpleItemTouchCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
             @Override
@@ -129,7 +129,7 @@ public class BaseActivity extends AppCompatActivity {
                 if (swipeDir == ItemTouchHelper.RIGHT) {
                     Contato contato = contatos.get(viewHolder.getAdapterPosition());
                     cDAO.apagaContato(contato);
-                    contatos.remove(viewHolder.getAdapterPosition());
+                    contatos.deleteFromRealm(viewHolder.getAdapterPosition());
                     recyclerView.getAdapter().notifyDataSetChanged();
 
                     showSnackBar("Contato removido");

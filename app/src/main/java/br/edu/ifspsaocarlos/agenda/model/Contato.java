@@ -2,15 +2,24 @@ package br.edu.ifspsaocarlos.agenda.model;
 
 import java.io.Serializable;
 
-public class Contato implements Serializable{
-    private static final long serialVersionUID = 1L;
+import io.realm.Realm;
+import io.realm.RealmModel;
+import io.realm.RealmObject;
+import io.realm.annotations.PrimaryKey;
+import io.realm.annotations.Required;
+
+public class Contato  extends RealmObject{
+
+    @PrimaryKey
     private long id;
+    @Required
     private String nome;
     private String fone;
     private String email;
 
     public Contato()
     {
+
     }
 
     public long getId() {

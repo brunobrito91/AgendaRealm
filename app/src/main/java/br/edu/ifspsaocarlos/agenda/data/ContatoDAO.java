@@ -5,86 +5,89 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+
 import br.edu.ifspsaocarlos.agenda.model.Contato;
+import br.edu.ifspsaocarlos.agenda.util.PrimaryKeyFactory;
+import io.realm.Realm;
+import io.realm.RealmResults;
+
 import java.util.ArrayList;
 import java.util.List;
 
 
 public class ContatoDAO {
-    private SQLiteDatabase database;
-    private SQLiteHelper dbHelper;
-
-    public ContatoDAO(Context context) {
-        this.dbHelper=new SQLiteHelper(context);
+    public ContatoDAO() {
     }
 
-    public  List<Contato> buscaContato(String nome)
-    {
-        database=dbHelper.getReadableDatabase();
-        List<Contato> contatos = new ArrayList<>();
-
-        Cursor cursor;
-
-        String[] cols=new String[] {SQLiteHelper.KEY_ID,SQLiteHelper.KEY_NAME, SQLiteHelper.KEY_FONE, SQLiteHelper.KEY_EMAIL};
-        String where=null;
-        String[] argWhere=null;
-
-        if (nome!=null) {
-            where = SQLiteHelper.KEY_NAME + " like ?";
-            argWhere = new String[]{nome + "%"};
+    public RealmResults<Contato> buscaContato(String nome) {
+        RealmResults<Contato> contatos;
+        Realm realm = Realm.getDefaultInstance();
+        if (nome != null) {
+            contatos = realm.where(Contato.class).contains("nome", nome).findAll();
+        } else {
+            contatos = realm.where(Contato.class).findAll();
         }
-
-
-        cursor = database.query(SQLiteHelper.DATABASE_TABLE, cols, where , argWhere,
-                null, null, SQLiteHelper.KEY_NAME);
-
-
-
-       if (cursor!=null)
-        {
-            cursor.moveToFirst();
-            while (!cursor.isAfterLast()) {
-                Contato contato = new Contato();
-                contato.setId(cursor.getInt(0));
-                contato.setNome(cursor.getString(1));
-                contato.setFone(cursor.getString(2));
-                contato.setEmail(cursor.getString(3));
-                contatos.add(contato);
-                cursor.moveToNext();
-            }
-            cursor.close();
-        }
-        database.close();
         return contatos;
     }
 
-    public void atualizaContato(Contato c) {
-        database=dbHelper.getWritableDatabase();
-        ContentValues updateValues = new ContentValues();
-        updateValues.put(SQLiteHelper.KEY_NAME, c.getNome());
-        updateValues.put(SQLiteHelper.KEY_FONE, c.getFone());
-        updateValues.put(SQLiteHelper.KEY_EMAIL, c.getEmail());
-        database.update(SQLiteHelper.DATABASE_TABLE, updateValues, SQLiteHelper.KEY_ID + "="
-                + c.getId(), null);
-        database.close();
+    public void atualizaContato(final Contato c) {
+        Realm realm = Realm.getDefaultInstance();
+        final Contato contato = realm.where(Contato.class).equalTo("id", c.getId()).findFirst();
+        if (contato != null) {
+            realm.executeTransaction(new Realm.Transaction() {
+                @Override
+                public void execute(Realm realm) {
+                    contato.setNome(c.getNome());
+                    contato.setFone(c.getFone());
+                    contato.setEmail(c.getEmail());
+                }
+            });
+        }
     }
 
 
-    public void insereContato(Contato c) {
-        database=dbHelper.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(SQLiteHelper.KEY_NAME, c.getNome());
-        values.put(SQLiteHelper.KEY_FONE, c.getFone());
-        values.put(SQLiteHelper.KEY_EMAIL, c.getEmail());
-        database.insert(SQLiteHelper.DATABASE_TABLE, null, values);
-        database.close();
+    public void insereContato(final Contato c) {
+        Realm realm = Realm.getDefaultInstance();
+        realm.executeTransaction(new Realm.Transaction() {
+            @Override
+            public void execute(Realm realm) {
+                c.setId(PrimaryKeyFactory.getInstance().nextKey(c.getClass()));
+                Contato contato = realm.copyToRealm(c);
+            }
+        });
     }
 
-    public void apagaContato(Contato c)
-    {
-        database=dbHelper.getWritableDatabase();
-        database.delete(SQLiteHelper.DATABASE_TABLE, SQLiteHelper.KEY_ID + "="
-                + c.getId(), null);
-        database.close();
+    public void apagaContato(Contato c) {
+        Realm realm = Realm.getDefaultInstance();
+        final Contato contato = realm.where(Contato.class).equalTo("id", c.getId()).findFirst();
+        realm.executeTransaction(new Realm.Transaction(){
+
+            @Override
+            public void execute(Realm realm) {
+                if (contato != null) {
+                    contato.deleteFromRealm();
+                }
+            }
+        });
+    }
+
+    public Contato buscaContato(long id) {
+        Realm realm = Realm.getDefaultInstance();
+        return realm.where(Contato.class).equalTo("id", id).findFirst();
+    }
+
+    public void atualizaContato(long id, final String name, final String fone, final String email) {
+        Realm realm = Realm.getDefaultInstance();
+        final Contato contato = realm.where(Contato.class).equalTo("id", id).findFirst();
+        if (contato != null) {
+            realm.executeTransaction(new Realm.Transaction() {
+                @Override
+                public void execute(Realm realm) {
+                    contato.setNome(name);
+                    contato.setFone(fone);
+                    contato.setEmail(email);
+                }
+            });
+        }
     }
 }

@@ -25,9 +25,13 @@ public class DetalheActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        if (getIntent().hasExtra("contato"))
+
+        cDAO = new ContatoDAO();
+
+        if (getIntent().hasExtra("contatoID"))
         {
-            this.c = (Contato) getIntent().getSerializableExtra("contato");
+            long id = getIntent().getLongExtra("contatoID", 0);
+            this.c = cDAO.buscaContato(id);
             EditText nameText = (EditText)findViewById(R.id.editText1);
             nameText.setText(c.getNome());
             EditText foneText = (EditText)findViewById(R.id.editText2);
@@ -39,14 +43,13 @@ public class DetalheActivity extends AppCompatActivity {
                 pos=c.getNome().length();
             setTitle(c.getNome().substring(0,pos));
         }
-        cDAO = new ContatoDAO(this);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_detalhe, menu);
-        if (!getIntent().hasExtra("contato"))
+        if (!getIntent().hasExtra("contatoID"))
         {
             MenuItem item = menu.findItem(R.id.delContato);
             item.setVisible(false);
@@ -92,11 +95,7 @@ public class DetalheActivity extends AppCompatActivity {
         }
         else
         {
-            c.setNome(name);
-            c.setFone(fone);
-            c.setEmail(email);
-            cDAO.atualizaContato(c);
-
+            cDAO.atualizaContato(c.getId(), name, fone, email);
         }
         Intent resultIntent = new Intent();
         setResult(RESULT_OK,resultIntent);
